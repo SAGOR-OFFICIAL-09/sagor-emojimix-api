@@ -10,8 +10,7 @@
 
 ## ⚙️ Settings
 
-কিছু বসাতে হবে না — **zero config**। Deploy করলেই চলবে।
-নিজের নাম চাইলে Vercel-এ `BRAND` নামে env variable বসাও (optional)।
+কিছু বসাতে হবে না — **zero config**। Deploy করলেই চলবে, কোনো env variable লাগে না।
 
 ## ⚠️ Credit নিয়ম (গুরুত্বপূর্ণ!)
 
