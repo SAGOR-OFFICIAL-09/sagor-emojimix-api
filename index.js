@@ -1,25 +1,10 @@
-/*
- * ============================================================
- *  EMOJIMIX API — standalone
- *  Mix two emojis into one image (Google Emoji Kitchen data)
- *  106,751 combinations bundled — no external API needed.
- * ============================================================
- *
- *  ★★★  YOUR SETTINGS — শুধু এই অংশটুকু বদলাও  ★★★
- *
- */
+// ===== SETTINGS (only change this part) =====
 const CONFIG = {
-  BRAND: "SAGOR",                                   // তোমার API-র নাম
-  SITE_URL: "https://sagor-emojimix-api.vercel.app", // তোমার সাইটের URL (Vercel link বসাও)
+  BRAND: "SAGOR",
+  SITE_URL: "https://sagor-emojimix-api.vercel.app",
 };
-/*
- *  ★★★  এর নিচে হাত দিও না  ★★★
- *  নিচের CREDIT_LINK তোমার সাইটে (SITE_URL) ফুটারে থাকতেই হবে।
- *  লিংক সরিয়ে ফেললে API কাজ করা বন্ধ করে দেবে (403)।
- */
 const CREDIT_HOST = "sagor-apis-nx.vercel.app";
 const CREDIT_URL = "https://" + CREDIT_HOST;
-/* ============================================================ */
 
 const express = require("express");
 const cors = require("cors");
@@ -30,35 +15,26 @@ const zlib = require("zlib");
 const app = express();
 app.use(cors());
 
-/* ---------- dataset load (106k combos, gzip+base64, 4 parts) ---------- */
 let MIX = null;
 function loadDataset() {
   if (MIX) return MIX;
   let b64 = "";
   for (let i = 1; i <= 4; i++) {
-    const part = fs.readFileSync(path.join(__dirname, `emojikitchen.p${i}.json`), "utf8");
-    b64 += JSON.parse(part);
+    b64 += JSON.parse(fs.readFileSync(path.join(__dirname, `emojikitchen.p${i}.json`), "utf8"));
   }
-  const buf = Buffer.from(b64, "base64");
-  MIX = JSON.parse(zlib.gunzipSync(buf).toString("utf8"));
-  console.log(`[emojimix] dataset loaded: ${Object.keys(MIX).length} combos`);
+  MIX = JSON.parse(zlib.gunzipSync(Buffer.from(b64, "base64")).toString("utf8"));
   return MIX;
 }
 
-/* ---------- credit-link enforcement ---------- */
 let creditCache = { ok: null, at: 0 };
 async function creditOK() {
   const now = Date.now();
   if (creditCache.ok !== null && now - creditCache.at < 3600 * 1000) return creditCache.ok;
-
   const site = (process.env.SITE_URL || CONFIG.SITE_URL || "").trim().replace(/\/+$/, "");
   let ok = true;
-
   if (!site) {
-    ok = false; // SITE_URL বসানো হয়নি — README দেখো
-  } else if (site === CREDIT_URL) {
-    ok = true; // owner's own deployment
-  } else {
+    ok = false;
+  } else if (site !== CREDIT_URL) {
     ok = false;
     for (let attempt = 0; attempt < 2 && !ok; attempt++) {
       try {
@@ -69,11 +45,10 @@ async function creditOK() {
           headers: { "User-Agent": "Mozilla/5.0 (EmojimixCreditCheck)" },
         });
         clearTimeout(timer);
-        const html = await res.text();
-        ok = html.includes(CREDIT_HOST); // ফুটারে ক্রেডিট লিংক আছে?
-        if (!ok) break; // পেজ পাওয়া গেছে কিন্তু লিংক নেই — retry নয়
+        ok = (await res.text()).includes(CREDIT_HOST);
+        if (!ok) break;
       } catch (e) {
-        if (attempt === 1) ok = true; // দুবারই নেটওয়ার্ক fail → সাইট ডাউন ধরে API চালু রাখো
+        if (attempt === 1) ok = true;
       }
     }
   }
@@ -81,18 +56,13 @@ async function creditOK() {
   return ok;
 }
 
-/* ---------- helpers ---------- */
 const up = (cp) => cp.replace(/-/g, "-u");
-function emojiToCp(emoji) {
-  return [...emoji].map((c) => c.codePointAt(0).toString(16)).join("-");
-}
-function mixURL(left, right, date) {
-  return `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${up(left)}/u${up(left)}_u${up(right)}.png`;
-}
+const emojiToCp = (emoji) => [...emoji].map((c) => c.codePointAt(0).toString(16)).join("-");
+const mixURL = (left, right, date) =>
+  `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${up(left)}/u${up(left)}_u${up(right)}.png`;
 const err = (res, code, message) =>
   res.status(code).json({ status: "error", author: CONFIG.BRAND, message });
 
-/* ---------- landing page (credit footer included — সরাবে না) ---------- */
 app.get("/", (req, res) => {
   res.send(`<!doctype html><html lang="bn"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -120,14 +90,12 @@ else alert(j.message);}</script>
 </body></html>`);
 });
 
-/* ---------- the API ---------- */
 app.get("/emojimix", async (req, res) => {
   const { emoji1, emoji2 } = req.query;
 
   if (!(await creditOK())) {
     return err(res, 403, `API disabled: keep a backlink to ${CREDIT_URL} on your site (${CONFIG.SITE_URL}). Link sorale API kaj korbe na.`);
   }
-
   if (!emoji1 || !emoji2) return err(res, 400, "Missing emoji1 or emoji2");
 
   const data = loadDataset();
@@ -156,6 +124,6 @@ app.get("/health", (req, res) => res.json({ status: "ok", combos: Object.keys(lo
 const PORT = process.env.PORT || 3000;
 if (require.main === module) {
   loadDataset();
-  app.listen(PORT, () => console.log(`[emojimix] listening on :${PORT}`));
+  app.listen(PORT, () => console.log(`listening on :${PORT}`));
 }
 module.exports = app;
