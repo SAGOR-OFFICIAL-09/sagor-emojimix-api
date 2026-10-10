@@ -47,7 +47,8 @@ GET /emojimix?emoji1=🙂&emoji2=🔥
 |------|-----|
 | `index.js` | পুরো API (Express) — Vercel-এ চলে |
 | `vercel.json` | Vercel config |
-| `emojikitchen.p1-4.json` | Emoji Kitchen dataset (gzip+base64, 4 ভাগে) |
+
+Dataset (106,751 combo) `sagor-apis-nx.vercel.app` থেকে auto-load হয় — repo-তে রাখতে হয় না।
 
 ---
 Powered by [SAGOR APIs](https://sagor-apis-nx.vercel.app)

@@ -1,25 +1,31 @@
-const BRAND = "x";
-const CREDIT_HOST = "";
+const BRAND = "SAGOR";
+const CREDIT_HOST = "sagor-apis-nx.vercel.app";
 const CREDIT_URL = "https://" + CREDIT_HOST;
+const DATA_URL = "https://" + CREDIT_HOST;
 
 const express = require("express");
 const cors = require("cors");
-const fs = require("fs");
-const path = require("path");
 const zlib = require("zlib");
 
 const app = express();
 app.use(cors());
 
 let MIX = null;
+let MIX_LOADING = null;
 function loadDataset() {
-  if (MIX) return MIX;
-  let b64 = "";
-  for (let i = 1; i <= 4; i++) {
-    b64 += JSON.parse(fs.readFileSync(path.join(__dirname, `emojikitchen.p${i}.json`), "utf8"));
-  }
-  MIX = JSON.parse(zlib.gunzipSync(Buffer.from(b64, "base64")).toString("utf8"));
-  return MIX;
+  if (MIX) return Promise.resolve(MIX);
+  if (MIX_LOADING) return MIX_LOADING;
+  MIX_LOADING = (async () => {
+    let b64 = "";
+    for (let i = 1; i <= 4; i++) {
+      const res = await fetch(`${DATA_URL}/emojikitchen.p${i}.json`);
+      if (!res.ok) throw new Error(`dataset p${i}: HTTP ${res.status}`);
+      b64 += await res.json();
+    }
+    MIX = JSON.parse(zlib.gunzipSync(Buffer.from(b64, "base64")).toString("utf8"));
+    return MIX;
+  })();
+  return MIX_LOADING;
 }
 
 const creditCache = {};
@@ -94,7 +100,12 @@ app.get("/emojimix", async (req, res) => {
   }
   if (!emoji1 || !emoji2) return err(res, 400, "Missing emoji1 or emoji2");
 
-  const data = loadDataset();
+  let data;
+  try {
+    data = await loadDataset();
+  } catch (e) {
+    return err(res, 503, "Dataset temporarily unavailable");
+  }
   const cp1 = emojiToCp(emoji1);
   const cp2 = emojiToCp(emoji2);
 
@@ -115,11 +126,20 @@ app.get("/emojimix", async (req, res) => {
   });
 });
 
-app.get("/health", (req, res) => res.json({ status: "ok", combos: Object.keys(loadDataset()).length }));
+app.get("/health", async (req, res) => {
+  try {
+    const data = await loadDataset();
+    res.json({ status: "ok", combos: Object.keys(data).length });
+  } catch (e) {
+    res.status(503).json({ status: "error", message: "Dataset temporarily unavailable" });
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 if (require.main === module) {
-  loadDataset();
-  app.listen(PORT, () => console.log(`listening on :${PORT}`));
+  loadDataset().then(
+    () => app.listen(PORT, () => console.log(`listening on :${PORT}`)),
+    (e) => { console.error("dataset load failed:", e.message); process.exit(1); }
+  );
 }
 module.exports = app;
