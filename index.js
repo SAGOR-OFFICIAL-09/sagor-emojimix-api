@@ -1,8 +1,4 @@
-// ===== SETTINGS (only change this part) =====
-const CONFIG = {
-  BRAND: "SAGOR",
-  SITE_URL: "https://sagor-emojimix-api.vercel.app",
-};
+const BRAND = process.env.BRAND || "SAGOR";
 const CREDIT_HOST = "sagor-apis-nx.vercel.app";
 const CREDIT_URL = "https://" + CREDIT_HOST;
 
@@ -26,15 +22,15 @@ function loadDataset() {
   return MIX;
 }
 
-let creditCache = { ok: null, at: 0 };
-async function creditOK() {
+const creditCache = {};
+async function creditOK(host) {
   const now = Date.now();
-  if (creditCache.ok !== null && now - creditCache.at < 3600 * 1000) return creditCache.ok;
-  const site = (process.env.SITE_URL || CONFIG.SITE_URL || "").trim().replace(/\/+$/, "");
+  const cached = creditCache[host];
+  if (cached && now - cached.at < 3600 * 1000) return cached.ok;
+  const proto = host.includes("localhost") ? "http" : "https";
+  const site = `${proto}://${host}`;
   let ok = true;
-  if (!site) {
-    ok = false;
-  } else if (site !== CREDIT_URL) {
+  if (host !== CREDIT_HOST && site !== CREDIT_URL) {
     ok = false;
     for (let attempt = 0; attempt < 2 && !ok; attempt++) {
       try {
@@ -52,7 +48,7 @@ async function creditOK() {
       }
     }
   }
-  creditCache = { ok, at: now };
+  creditCache[host] = { ok, at: now };
   return ok;
 }
 
@@ -61,19 +57,19 @@ const emojiToCp = (emoji) => [...emoji].map((c) => c.codePointAt(0).toString(16)
 const mixURL = (left, right, date) =>
   `https://www.gstatic.com/android/keyboard/emojikitchen/${date}/u${up(left)}/u${up(left)}_u${up(right)}.png`;
 const err = (res, code, message) =>
-  res.status(code).json({ status: "error", author: CONFIG.BRAND, message });
+  res.status(code).json({ status: "error", author: BRAND, message });
 
 app.get("/", (req, res) => {
   res.send(`<!doctype html><html lang="bn"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${CONFIG.BRAND} Emojimix API</title>
+<title>${BRAND} Emojimix API</title>
 <style>body{font-family:system-ui;background:#0f172a;color:#e2e8f0;max-width:640px;margin:40px auto;padding:0 20px}
 code{background:#1e293b;padding:2px 8px;border-radius:6px;font-size:14px}
 a{color:#38bdf8}input,button{padding:10px;border-radius:8px;border:1px solid #334155;font-size:16px}
 input{background:#1e293b;color:#fff;width:70px;text-align:center}button{background:#38bdf8;color:#000;font-weight:700;cursor:pointer}
 img{max-width:200px;margin-top:16px}footer{margin-top:48px;padding-top:16px;border-top:1px solid #334155;color:#64748b;font-size:13px}</style>
 </head><body>
-<h1>🎭 ${CONFIG.BRAND} Emojimix API</h1>
+<h1>🎭 ${BRAND} Emojimix API</h1>
 <p>দুটো emoji মিক্স করে একটা image বানাও — 106,751 কম্বিনেশন, কোনো external API লাগে না।</p>
 <h3>ব্যবহার</h3>
 <code>/emojimix?emoji1=🙂&amp;emoji2=🔥</code>
@@ -93,8 +89,8 @@ else alert(j.message);}</script>
 app.get("/emojimix", async (req, res) => {
   const { emoji1, emoji2 } = req.query;
 
-  if (!(await creditOK())) {
-    return err(res, 403, `API disabled: keep a backlink to ${CREDIT_URL} on your site (${CONFIG.SITE_URL}). Link sorale API kaj korbe na.`);
+  if (!(await creditOK(req.headers.host))) {
+    return err(res, 403, `API disabled: keep a backlink to ${CREDIT_URL} on your site. Link sorale API kaj korbe na.`);
   }
   if (!emoji1 || !emoji2) return err(res, 400, "Missing emoji1 or emoji2");
 
@@ -113,7 +109,7 @@ app.get("/emojimix", async (req, res) => {
 
   res.json({
     status: "success",
-    author: CONFIG.BRAND,
+    author: BRAND,
     total: 1,
     data: [{ id: key, emoji: [emoji1, emoji2], image: mixURL(left, right, date), size: null }],
   });
