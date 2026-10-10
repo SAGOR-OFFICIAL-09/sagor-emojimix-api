@@ -1,5 +1,5 @@
 const BRAND = "x";
-const CREDIT_HOST = "sagor-apis-nx.vercel.app";
+const CREDIT_HOST = "";
 const CREDIT_URL = "https://" + CREDIT_HOST;
 
 const express = require("express");
