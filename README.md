@@ -12,8 +12,7 @@
 
 ```js
 const CONFIG = {
-  BRAND: "SAGOR",                                   // তোমার API-র নাম
-  API_KEY: "sagor",                                 // তোমার secret key
+  BRAND: "SAGOR",                                    // তোমার API-র নাম
   SITE_URL: "https://sagor-emojimix-api.vercel.app", // তোমার সাইটের URL
 };
 ```
@@ -30,7 +29,7 @@ const CONFIG = {
 ## 📖 ব্যবহার
 
 ```
-GET /emojimix?emoji1=🙂&emoji2=🔥&apikey=তোমার_KEY
+GET /emojimix?emoji1=🙂&emoji2=🔥
 ```
 
 ```json
