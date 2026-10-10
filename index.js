@@ -1,4 +1,4 @@
-const BRAND = "SAGOR";
+const BRAND = "x";
 const CREDIT_HOST = "sagor-apis-nx.vercel.app";
 const CREDIT_URL = "https://" + CREDIT_HOST;
 
